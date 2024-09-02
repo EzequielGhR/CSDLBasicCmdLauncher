@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MAX_BUTTONS 5
 #define BUTTON_BORDER_PX 2
 #define BUTTON_PADDING 50
 #define BUTTON_HEIGTH 50
@@ -19,6 +20,11 @@ typedef struct {
     Uint8 hover_red, hover_green, hover_blue, hover_alpha;
 } Button;
 
+typedef struct {
+    Button* button_ptr;
+    void* next;
+} Node;
+
 typedef enum {false, true} bool;
 
 
@@ -27,6 +33,9 @@ void launch_program(const char* command, const char* button_label);
 void draw_buttons_and_labels(Button* buttons_array, int num_buttons, TTF_Font* font,
                              SDL_Renderer* renderer, int mouse_x, int mouse_y);
 void arrange_buttons(Button* buttons_array, int num_buttons);
+Node* load_config();
+void print_config(Node* head);
+void destroy_config(Node* head);
 
 
 int main(int argc, char** argv){
@@ -166,4 +175,73 @@ void draw_buttons_and_labels(Button* buttons_array, int num_buttons, TTF_Font* f
 void arrange_buttons(Button* buttons_array, int num_buttons){
     printf("Arranging buttons\n");
     for (int i=0; i<num_buttons; i++) buttons_array[i].rect.y = (2*i+1) * BUTTON_HEIGTH;
+}
+
+
+Node* load_config() {
+    // TODO: This needs to be set dynamically. maybe a .ini file?
+    Button buttons_array[] = {
+        {
+            rect: {BUTTON_PADDING, BUTTON_HEIGTH, WINDOW_WIDTH - 2*BUTTON_PADDING, BUTTON_HEIGTH},
+            label: "Open Terminal",
+            command: "gnome-terminal",
+            red: 0, green: 0, blue: 255, alpha: SDL_ALPHA_OPAQUE,
+            text_red: 255, text_green: 255, text_blue: 255, text_alpha: SDL_ALPHA_OPAQUE,
+            hover_red: 255, hover_green: 0, hover_blue: 0, hover_alpha: 32
+        },
+        {
+            rect: {BUTTON_PADDING, BUTTON_HEIGTH, WINDOW_WIDTH - 2*BUTTON_PADDING, BUTTON_HEIGTH},
+            label: "Open Browser",
+            command: "brave-browser",
+            red: 0, green: 0, blue: 255, alpha: SDL_ALPHA_OPAQUE,
+            text_red: 255, text_green: 255, text_blue: 255, text_alpha: SDL_ALPHA_OPAQUE,
+            hover_red: 255, hover_green: 0, hover_blue: 0, hover_alpha: 32
+        },
+    };
+
+    int num_buttons = sizeof(buttons_array)/sizeof(buttons_array[0]);
+    int max_buttons = (num_buttons < MAX_BUTTONS) ? num_buttons : MAX_BUTTONS;
+
+    Node* head = NULL;
+
+    for (int i=0; i<max_buttons; i++){
+        Node* new = malloc(sizeof(Node));
+        if (new == NULL){
+            fprintf(stderr, "Error allocating memory for Node\n");
+            exit(1);
+        }
+
+        new->button_ptr = malloc(sizeof(Button));
+        if (new->button_ptr == NULL){
+            fprintf(stderr, "Failed to allocate memory for button pointer\n");
+            exit(1);
+        }
+
+        *new->button_ptr = buttons_array[i];
+        new->button_ptr->rect.y = (2*i+1)*BUTTON_HEIGTH;
+
+        new->next = head;
+        head = new;
+    }
+
+    return head;
+}
+
+
+void print_config(Node* head){
+    Node* current = head;
+    while (current){
+        printf("Label: %s; Command: %s.\n", current->button_ptr->label, current->button_ptr->command);
+        current = current->next;
+    }
+}
+
+
+void destroy_config(Node* head){
+    while(head){
+        Node* next = head->next;
+        free(head->button_ptr);
+        free(head);
+        head = next;
+    }
 }
