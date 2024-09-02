@@ -35,6 +35,8 @@ void arrange_buttons(Button* buttons_array, int num_buttons);
 Node* load_config();
 void print_config(Node* head);
 void destroy_config(Node* head);
+Node* new_node();
+Button* new_button();
 
 
 int main(int argc, char** argv){
@@ -87,6 +89,7 @@ int main(int argc, char** argv){
     }
 
     printf("Closing program\n");
+    destroy_config(config);
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_DestroyRenderer(renderer);
@@ -187,17 +190,9 @@ Node* load_config() {
     Node* head = NULL;
 
     for (int i=0; i<max_buttons; i++){
-        Node* new = malloc(sizeof(Node));
-        if (new == NULL){
-            fprintf(stderr, "Error allocating memory for Node\n");
-            exit(1);
-        }
+        Node* new = new_node();
 
-        new->button_ptr = malloc(sizeof(Button));
-        if (new->button_ptr == NULL){
-            fprintf(stderr, "Failed to allocate memory for button pointer\n");
-            exit(1);
-        }
+        new->button_ptr = new_button();
 
         *new->button_ptr = buttons_array[i];
         new->button_ptr->rect.y = (2*i+1)*BUTTON_HEIGTH;
@@ -226,4 +221,25 @@ void destroy_config(Node* head){
         free(head);
         head = next;
     }
+}
+
+
+void* __new_t(size_t size, char* type){
+    void* new = malloc(size);
+    if (new == NULL){
+        fprintf(stderr, "failed to allocate %s\n", type);
+        exit(1);
+    }
+
+    return new;
+}
+
+
+Node* new_node(){
+    return __new_t(sizeof(Node), "node");
+}
+
+
+Button* new_button(){
+    return __new_t(sizeof(Button), "button");
 }
