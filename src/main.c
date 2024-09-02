@@ -30,8 +30,7 @@ typedef enum {false, true} bool;
 
 bool is_button_hovered(Button* button_ptr, int x_coord, int y_coord);
 void launch_program(const char* command, const char* button_label);
-void draw_buttons_and_labels(Button* buttons_array, int num_buttons, TTF_Font* font,
-                             SDL_Renderer* renderer, int mouse_x, int mouse_y);
+void draw_buttons_and_labels(Node* config, TTF_Font* font, SDL_Renderer* renderer, int mouse_x, int mouse_y);
 void arrange_buttons(Button* buttons_array, int num_buttons);
 Node* load_config();
 void print_config(Node* head);
@@ -48,27 +47,8 @@ int main(int argc, char** argv){
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
 
-    Button buttons[] = {
-        {
-            rect: {BUTTON_PADDING, BUTTON_HEIGTH, WINDOW_WIDTH - 2*BUTTON_PADDING, BUTTON_HEIGTH},
-            label: "Open Terminal",
-            command: "gnome-terminal",
-            red: 0, green: 0, blue: 255, alpha: SDL_ALPHA_OPAQUE,
-            text_red: 255, text_green: 255, text_blue: 255, text_alpha: SDL_ALPHA_OPAQUE,
-            hover_red: 255, hover_green: 0, hover_blue: 0, hover_alpha: 32
-        },
-        {
-            rect: {BUTTON_PADDING, BUTTON_HEIGTH, WINDOW_WIDTH - 2*BUTTON_PADDING, BUTTON_HEIGTH},
-            label: "Open Browser",
-            command: "brave-browser",
-            red: 0, green: 0, blue: 255, alpha: SDL_ALPHA_OPAQUE,
-            text_red: 255, text_green: 255, text_blue: 255, text_alpha: SDL_ALPHA_OPAQUE,
-            hover_red: 255, hover_green: 0, hover_blue: 0, hover_alpha: 32
-        },
-    };
-    int num_buttons = sizeof(buttons)/sizeof(buttons[0]);
-
-    arrange_buttons(buttons, num_buttons);
+    Node* config = load_config();
+    print_config(config);
 
     bool running = true;
     SDL_Event event;
@@ -90,9 +70,11 @@ int main(int argc, char** argv){
                 int y_coord = event.button.y;
                 int previous_heigth = 0;
 
-                for (int i=0; i<num_buttons; i++){
-                    if (is_button_hovered(&buttons[i], x_coord, y_coord))
-                        launch_program(buttons[i].command, buttons[i].label);
+                Node* current = config;
+                for (current; current != NULL; current = current->next){
+                    Button* btn_ptr = current->button_ptr;
+                    if (is_button_hovered(btn_ptr, x_coord, y_coord))
+                        launch_program(btn_ptr->command, btn_ptr->label);
                 }
             }
         }
@@ -101,7 +83,7 @@ int main(int argc, char** argv){
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
         SDL_RenderClear(renderer);
 
-        draw_buttons_and_labels(buttons, num_buttons, font, renderer, mouse_x, mouse_y);
+        draw_buttons_and_labels(config, font, renderer, mouse_x, mouse_y);
     }
 
     printf("Closing program\n");
@@ -126,31 +108,31 @@ void launch_program(const char* command, const char* button_label){
 }
 
 
-void draw_buttons_and_labels(Button* buttons_array, int num_buttons, TTF_Font* font,
-                             SDL_Renderer* renderer, int mouse_x, int mouse_y){
-    for (int i=0; i<num_buttons; i++){
-        Button btn = buttons_array[i];
+void draw_buttons_and_labels(Node* config, TTF_Font* font, SDL_Renderer* renderer, int mouse_x, int mouse_y){
+    Node* current = config;
+    for (current; current != NULL; current = current->next){
+        Button* btn_ptr = current->button_ptr;
 
         // Check if the mouse is hovering the button
-        bool is_hovered = is_button_hovered(&btn, mouse_x, mouse_y);
+        bool is_hovered = is_button_hovered(btn_ptr, mouse_x, mouse_y);
 
         // Draw button border
-        SDL_Rect border_rect = {btn.rect.x - BUTTON_BORDER_PX, btn.rect.y - BUTTON_BORDER_PX,
-                                btn.rect.w + 2*BUTTON_BORDER_PX, btn.rect.h + 2*BUTTON_BORDER_PX};
+        SDL_Rect border_rect = {btn_ptr->rect.x - BUTTON_BORDER_PX, btn_ptr->rect.y - BUTTON_BORDER_PX,
+                                btn_ptr->rect.w + 2*BUTTON_BORDER_PX, btn_ptr->rect.h + 2*BUTTON_BORDER_PX};
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_RenderFillRect(renderer, &border_rect);
 
         // Draw button
         if (is_hovered)
-            SDL_SetRenderDrawColor(renderer, btn.hover_red, btn.hover_green, btn.hover_blue, btn.hover_alpha);
+            SDL_SetRenderDrawColor(renderer, btn_ptr->hover_red, btn_ptr->hover_green, btn_ptr->hover_blue, btn_ptr->hover_alpha);
         else
-            SDL_SetRenderDrawColor(renderer, btn.red, btn.green, btn.blue, btn.alpha);
+            SDL_SetRenderDrawColor(renderer, btn_ptr->red, btn_ptr->green, btn_ptr->blue, btn_ptr->alpha);
 
-        SDL_RenderFillRect(renderer, &btn.rect);
+        SDL_RenderFillRect(renderer, &btn_ptr->rect);
 
         // Render label
-        SDL_Color text_color = {btn.text_red, btn.text_green, btn.text_blue, btn.text_alpha};
-        SDL_Surface* text_surface = TTF_RenderText_Solid(font, btn.label, text_color);
+        SDL_Color text_color = {btn_ptr->text_red, btn_ptr->text_green, btn_ptr->text_blue, btn_ptr->text_alpha};
+        SDL_Surface* text_surface = TTF_RenderText_Solid(font, btn_ptr->label, text_color);
         SDL_Texture* text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
 
         // Get text width and height
@@ -158,8 +140,8 @@ void draw_buttons_and_labels(Button* buttons_array, int num_buttons, TTF_Font* f
         SDL_QueryTexture(text_texture, NULL, NULL, &text_width, &text_height);
 
         // Calculate position to center text on button
-        int text_x_coord = btn.rect.x + (btn.rect.w - text_width)/2;
-        int text_y_coord = btn.rect.y + (btn.rect.h - text_height)/2;
+        int text_x_coord = btn_ptr->rect.x + (btn_ptr->rect.w - text_width)/2;
+        int text_y_coord = btn_ptr->rect.y + (btn_ptr->rect.h - text_height)/2;
 
         SDL_Rect text_rect = {text_x_coord, text_y_coord, text_width, text_height};
         SDL_RenderCopy(renderer, text_texture, NULL, &text_rect);
