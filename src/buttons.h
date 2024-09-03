@@ -31,7 +31,7 @@
 
 
     Bool is_button_hovered(Button* button_ptr, int x_coord, int y_coord);
-    Node* load_config();
+    Node* load_config(char* filename);
     void print_config(Node* head);
     void destroy_config(Node* head);
     Node* new_node();

@@ -5,6 +5,7 @@
 #include "buttons.h"
 
 #define FONT_PATH "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+#define BUTTONS_CONFIG_PATH "/home/zeke/Documents/Repos/CSDLBasicCmdLauncher/buttons.ini"
 
 
 void launch_program(const char* command, const char* button_label){
@@ -23,7 +24,7 @@ int main(int argc, char** argv){
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
 
-    Node* config = load_config();
+    Node* config = load_config(BUTTONS_CONFIG_PATH);
     print_config(config);
 
     Bool running = TRUE;

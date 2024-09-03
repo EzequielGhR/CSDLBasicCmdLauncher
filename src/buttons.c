@@ -2,6 +2,8 @@
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include "ini.h"
 
 #define MAX_BUTTONS 5
 #define BUTTON_BORDER_PX 2
@@ -101,50 +103,80 @@ void draw_buttons_and_labels(Node* config, TTF_Font* font, SDL_Renderer* rendere
 }
 
 
-Node* load_config() {
-    // TODO: This needs to be set dynamically. maybe a .ini file?
-    Button buttons_array[] = {
-        {
-            rect: {BUTTON_PADDING, BUTTON_HEIGTH, WINDOW_WIDTH - 2*BUTTON_PADDING, BUTTON_HEIGTH},
-            label: "Open Terminal",
-            command: "gnome-terminal",
-            red: 0, green: 0, blue: 255, alpha: SDL_ALPHA_OPAQUE,
-            text_red: 255, text_green: 255, text_blue: 255, text_alpha: SDL_ALPHA_OPAQUE,
-            hover_red: 255, hover_green: 0, hover_blue: 0, hover_alpha: 32
-        },
-        {
-            rect: {BUTTON_PADDING, BUTTON_HEIGTH, WINDOW_WIDTH - 2*BUTTON_PADDING, BUTTON_HEIGTH},
-            label: "Open Browser",
-            command: "brave-browser",
-            red: 0, green: 0, blue: 255, alpha: SDL_ALPHA_OPAQUE,
-            text_red: 255, text_green: 255, text_blue: 255, text_alpha: SDL_ALPHA_OPAQUE,
-            hover_red: 255, hover_green: 0, hover_blue: 0, hover_alpha: 32
-        },
-    };
+static Button temp_button;
+static int button_index = -1;
 
-    int num_buttons = sizeof(buttons_array)/sizeof(buttons_array[0]);
-    int max_buttons = (num_buttons < MAX_BUTTONS) ? num_buttons : MAX_BUTTONS;
 
-    Node* head = NULL;
+static int _config_handler(void* user, const char* section, const char* name, const char* value){
+    Node** config_ptr = (Node**)user;
 
-    for (int i=0; i<max_buttons; i++){
-        Node* new = new_node();
+    // Used to compare with current sections
+    char title_buffer[10];
+    for (int index=0; index<MAX_BUTTONS; index++){
+        // Skip until the valid section is found
+        sprintf(title_buffer, "button_%d", index+1);
+        if (strcmp(section, title_buffer) != 0) continue;
 
-        new->button_ptr = new_button();
+        if (index != button_index){
+            // Redefine index so we don't redefine rect each iteration.
+            button_index = index;
 
-        *new->button_ptr = buttons_array[i];
-        new->button_ptr->rect.y = (2*i+1)*BUTTON_HEIGTH;
+            // Set rect attributes
+            temp_button.rect.x = BUTTON_PADDING;
+            temp_button.rect.y = (2 * index + 1) * BUTTON_HEIGTH;
+            temp_button.rect.w = WINDOW_WIDTH - 2 * BUTTON_PADDING;
+            temp_button.rect.h = BUTTON_HEIGTH;
+        }
 
-        new->next = head;
-        head = new;
+        // Set remaining button attributes.
+        if (strcmp(name, "label") == 0) temp_button.label = strdup(value);
+        else if (strcmp(name, "command") == 0) temp_button.command = strdup(value);
+        else if (strcmp(name, "red") == 0) temp_button.red = (Uint8)atoi(value);
+        else if (strcmp(name, "green") == 0) temp_button.green = (Uint8)atoi(value);
+        else if (strcmp(name, "blue") == 0) temp_button.blue = (Uint8)atoi(value);
+        else if (strcmp(name, "alpha") == 0) temp_button.alpha = (Uint8)atoi(value);
+        else if (strcmp(name, "hover_red") == 0) temp_button.hover_red = (Uint8)atoi(value);
+        else if (strcmp(name, "hover_green") == 0) temp_button.hover_green = (Uint8)atoi(value);
+        else if (strcmp(name, "hover_blue") == 0) temp_button.hover_blue = (Uint8)atoi(value);
+        else if (strcmp(name, "hover_alpha") == 0) temp_button.hover_blue = (Uint8)atoi(value);
+        else if (strcmp(name, "text_red") == 0) temp_button.text_red = (Uint8)atoi(value);
+        else if (strcmp(name, "text_green") == 0) temp_button.text_green = (Uint8)atoi(value);
+        else if (strcmp(name, "text_blue") == 0) temp_button.text_blue = (Uint8)atoi(value);
+
+        // Set last attribute and append to list of buttons.
+        else if (strcmp(name, "text_alpha") == 0){
+            temp_button.text_alpha = (Uint8)atoi(value);
+
+            // Create a new node
+            Node* new = new_node();
+            new->button_ptr = new_button();
+
+            // Define the node button with the populated temp button.
+            *new->button_ptr = temp_button;
+
+            // Append new node to list
+            new->next = *config_ptr;
+            *config_ptr = new;
+        }
     }
 
-    return head;
+    return 1;
 }
 
 
-void print_config(Node* head){
-    Node* current = head;
+Node* load_config(const char* filename){
+    Node* config = NULL;
+    if (ini_parse(filename, _config_handler, &config) < 0){
+        fprintf(stderr, "Can't load \"%s\"", filename);
+        exit(1);
+    }
+
+    return config;
+}
+
+
+void print_config(Node* config){
+    Node* current = config;
     while (current){
         printf("Label: %s; Command: %s.\n", current->button_ptr->label, current->button_ptr->command);
         current = current->next;
@@ -152,11 +184,11 @@ void print_config(Node* head){
 }
 
 
-void destroy_config(Node* head){
-    while(head){
-        Node* next = head->next;
-        free(head->button_ptr);
-        free(head);
-        head = next;
+void destroy_config(Node* config){
+    while(config){
+        Node* next = config->next;
+        free(config->button_ptr);
+        free(config);
+        config = next;
     }
 }
