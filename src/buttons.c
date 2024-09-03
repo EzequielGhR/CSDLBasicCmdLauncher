@@ -11,6 +11,7 @@
 #define BUTTON_HEIGTH 50
 #define WINDOW_WIDTH 1360
 #define WINDOW_HEIGTH 768
+#define MAX_STRING_LENGTH 50
 
 typedef struct {
     SDL_Rect rect;
@@ -51,9 +52,25 @@ Button* new_button(){
 }
 
 
+char* new_command(char* command){
+    char* new_command = (char*)__new_t(strlen(command)+1, "string");
+    strcpy(new_command, command);
+    strcat(new_command, "&");
+    return new_command;
+}
+
+
 Bool is_button_hovered(Button* button_ptr, int x_coord, int y_coord){
     return (x_coord > button_ptr->rect.x && x_coord < button_ptr->rect.x + button_ptr->rect.w &&
             y_coord > button_ptr->rect.y && y_coord < button_ptr->rect.y + button_ptr->rect.h);
+}
+
+
+Bool ends_with_extension(char* string, char* extension){
+    string = strrchr(string, '.');
+    if (string == NULL) return FALSE;
+    if (strcmp(string, extension)) return FALSE;
+    return TRUE;
 }
 
 
@@ -130,7 +147,7 @@ static int _config_handler(void* user, const char* section, const char* name, co
 
         // Set remaining button attributes.
         if (strcmp(name, "label") == 0) temp_button.label = strdup(value);
-        else if (strcmp(name, "command") == 0) temp_button.command = strdup(value);
+        else if (strcmp(name, "command") == 0) temp_button.command = new_command((char *)value);
         else if (strcmp(name, "red") == 0) temp_button.red = (Uint8)atoi(value);
         else if (strcmp(name, "green") == 0) temp_button.green = (Uint8)atoi(value);
         else if (strcmp(name, "blue") == 0) temp_button.blue = (Uint8)atoi(value);
@@ -165,6 +182,11 @@ static int _config_handler(void* user, const char* section, const char* name, co
 
 
 Node* load_config(const char* filename){
+    if (!ends_with_extension((char*)filename, ".ini")){
+        fprintf(stderr, "Provided file path is not a \".ini\" file\n");
+        exit(1);
+    }
+
     Node* config = NULL;
     if (ini_parse(filename, _config_handler, &config) < 0){
         fprintf(stderr, "Can't load \"%s\"", filename);
@@ -187,6 +209,8 @@ void print_config(Node* config){
 void destroy_config(Node* config){
     while(config){
         Node* next = config->next;
+        free((char *)config->button_ptr->command);
+        free((char *)config->button_ptr->label);
         free(config->button_ptr);
         free(config);
         config = next;

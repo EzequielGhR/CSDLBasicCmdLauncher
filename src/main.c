@@ -1,11 +1,10 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include "buttons.h"
 
 #define FONT_PATH "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-#define BUTTONS_CONFIG_PATH "/home/zeke/Documents/Repos/CSDLBasicCmdLauncher/buttons.ini"
 
 
 void launch_program(const char* command, const char* button_label){
@@ -15,6 +14,15 @@ void launch_program(const char* command, const char* button_label){
 }
 
 int main(int argc, char** argv){
+    if (argc != 2){
+        fprintf(stderr, "Wrong amount of arguments. Usage: %s <buttons-config-ini-path>\n", argv[0]);
+        return 1;
+    }
+
+    char* buttons_config_path = argv[1];
+    Node* config = load_config(buttons_config_path);
+    print_config(config);
+
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
 
@@ -22,10 +30,6 @@ int main(int argc, char** argv){
                                           WINDOW_WIDTH, WINDOW_HEIGTH, SDL_WINDOW_SHOWN);
     
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-
-    Node* config = load_config(BUTTONS_CONFIG_PATH);
-    print_config(config);
 
     Bool running = TRUE;
     SDL_Event event;
