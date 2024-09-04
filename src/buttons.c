@@ -5,7 +5,7 @@
 #include <string.h>
 #include "ini.h"
 
-#define MAX_BUTTONS 5
+#define MAX_BUTTONS 7
 #define BUTTON_BORDER_PX 2
 #define BUTTON_PADDING 50
 #define BUTTON_HEIGTH 50
@@ -32,6 +32,7 @@ typedef enum {FALSE, TRUE} Bool;
 
 
 void* __new_t(size_t size, char* type){
+    printf("Allocating memory for %s\n", type);
     void* new = malloc(size);
     if (new == NULL){
         fprintf(stderr, "failed to allocate %s\n", type);
@@ -187,6 +188,7 @@ Node* load_config(const char* filename){
         exit(1);
     }
 
+    printf("Loading config as linked list...\n");
     Node* config = NULL;
     if (ini_parse(filename, _config_handler, &config) < 0){
         fprintf(stderr, "Can't load \"%s\"", filename);
@@ -209,9 +211,15 @@ void print_config(Node* config){
 void destroy_config(Node* config){
     while(config){
         Node* next = config->next;
+
+        printf("Freeing memory for button command and label...\n");
         free((char *)config->button_ptr->command);
         free((char *)config->button_ptr->label);
+
+        printf("Freeing allocated button...\n");
         free(config->button_ptr);
+
+        printf("Freeing linked list node...\n");
         free(config);
         config = next;
     }
